@@ -1,0 +1,567 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated LMS learner or administrator account profile linked to corporate or verified Google Workspace email.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "emailDomain": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 100
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "division": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "enum": ["learner", "admin"]
+        },
+        "currentTrack": {
+          "type": "string",
+          "enum": ["OJT", "Junior", "Middle", "Senior"]
+        },
+        "placementLevel": {
+          "type": "string",
+          "enum": ["unset", "OJT", "Junior", "Middle", "Senior"]
+        },
+        "avgPreScore": {
+          "type": "number"
+        },
+        "avgVideoPct": {
+          "type": "number"
+        },
+        "bestPostScore": {
+          "type": "number"
+        },
+        "modulesPassed": {
+          "type": "number"
+        },
+        "modulesTotal": {
+          "type": "number"
+        },
+        "interventionSent": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "email",
+        "emailDomain",
+        "displayName",
+        "division",
+        "role",
+        "currentTrack",
+        "placementLevel",
+        "avgPreScore",
+        "avgVideoPct",
+        "bestPostScore",
+        "modulesPassed",
+        "modulesTotal",
+        "interventionSent",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CourseProgressRecord": {
+      "title": "CourseProgressRecord",
+      "description": "Per-course Pre-Test, Video Learning, Post-Test, and notes state owned by an authenticated learner.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "courseId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "preScore": {
+          "type": "number"
+        },
+        "bestPostScore": {
+          "type": "number"
+        },
+        "watchedPct": {
+          "type": "number"
+        },
+        "lastPositionSec": {
+          "type": "number"
+        },
+        "checkpointPassed": {
+          "type": "boolean"
+        },
+        "watchedSeconds": {
+          "type": "array"
+        },
+        "postTestAttempts": {
+          "type": "array"
+        },
+        "notes": {
+          "type": "array"
+        },
+        "preTestResult": {
+          "type": "object"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "courseId",
+        "preScore",
+        "bestPostScore",
+        "watchedPct",
+        "lastPositionSec",
+        "checkpointPassed",
+        "watchedSeconds",
+        "postTestAttempts",
+        "notes",
+        "updatedAt"
+      ]
+    },
+    "CourseConfigOverride": {
+      "title": "CourseConfigOverride",
+      "description": "Admin-managed passing thresholds, watch minimums, or custom modules published to learners.",
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["active"]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 140
+        },
+        "category": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "trackLevel": {
+          "type": "string",
+          "enum": ["OJT", "Junior", "Middle", "Senior"]
+        },
+        "instructorName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "syllabusDurationLabel": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "passingScore": {
+          "type": "number"
+        },
+        "minWatchPercent": {
+          "type": "number"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "moduleOrderInTrack": {
+          "type": "number"
+        },
+        "isCustom": {
+          "type": "boolean"
+        },
+        "videoUrl": {
+          "type": "string",
+          "maxLength": 1500
+        },
+        "videoDurationSec": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "courseId",
+        "visibility",
+        "code",
+        "title",
+        "category",
+        "trackLevel",
+        "instructorName",
+        "syllabusDurationLabel",
+        "passingScore",
+        "minWatchPercent",
+        "description",
+        "moduleOrderInTrack",
+        "isCustom",
+        "updatedAt",
+        "updatedBy"
+      ]
+    },
+    "WorkspacePolicy": {
+      "title": "WorkspacePolicy",
+      "description": "Company email domain verification, participant invite enforcement, and admin-configured learning path flow policy.",
+      "type": "object",
+      "properties": {
+        "companyName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "enforceCorporateDomain": {
+          "type": "boolean"
+        },
+        "allowedDomains": {
+          "type": "array"
+        },
+        "requireRegisteredInvite": {
+          "type": "boolean"
+        },
+        "levelFlowMode": {
+          "type": "string",
+          "enum": ["admin_assigned", "linear_sequential", "open_catalog"]
+        },
+        "enforceModuleOrder": {
+          "type": "boolean"
+        },
+        "trackSequence": {
+          "type": "array"
+        },
+        "enableCameraMonitoring": {
+          "type": "boolean"
+        },
+        "requireCameraForTests": {
+          "type": "boolean"
+        },
+        "enableScreenTracking": {
+          "type": "boolean"
+        },
+        "enableTabSwitchSiren": {
+          "type": "boolean"
+        },
+        "requireFullscreenForPostTest": {
+          "type": "boolean"
+        },
+        "maxTabSwitchTolerance": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "companyName",
+        "enforceCorporateDomain",
+        "allowedDomains",
+        "requireRegisteredInvite",
+        "levelFlowMode",
+        "enforceModuleOrder",
+        "trackSequence",
+        "enableCameraMonitoring",
+        "requireCameraForTests",
+        "enableScreenTracking",
+        "enableTabSwitchSiren",
+        "requireFullscreenForPostTest",
+        "maxTabSwitchTolerance",
+        "updatedAt",
+        "updatedBy"
+      ]
+    },
+    "ParticipantRegistration": {
+      "title": "ParticipantRegistration",
+      "description": "Admin pre-registered training participant email with assigned division and starting track level.",
+      "type": "object",
+      "properties": {
+        "inviteId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "division": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "assignedTrack": {
+          "type": "string",
+          "enum": ["OJT", "Junior", "Middle", "Senior"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "active"]
+        },
+        "registeredBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "activatedUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "inviteId",
+        "email",
+        "displayName",
+        "division",
+        "assignedTrack",
+        "status",
+        "registeredBy",
+        "activatedUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminMember": {
+      "title": "AdminMember",
+      "description": "Explicit administrator registry entry granting Dashboard Admin privileges.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "grantedBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "grantedBy", "createdAt"]
+    },
+    "ProctoringLog": {
+      "title": "ProctoringLog",
+      "description": "Real-time camera verification and screen focus tracking integrity session log per learner, course, and stage.",
+      "type": "object",
+      "properties": {
+        "logId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "userEmail": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "division": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "courseId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "courseCode": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32
+        },
+        "stage": {
+          "type": "string",
+          "enum": ["pretest", "video", "posttest"]
+        },
+        "cameraActive": {
+          "type": "boolean"
+        },
+        "cameraLabel": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "cameraMirror": {
+          "type": "boolean"
+        },
+        "screenShareActive": {
+          "type": "boolean"
+        },
+        "fullscreenActive": {
+          "type": "boolean"
+        },
+        "tabSwitchCount": {
+          "type": "number"
+        },
+        "windowBlurCount": {
+          "type": "number"
+        },
+        "focusScorePct": {
+          "type": "number"
+        },
+        "awaySeconds": {
+          "type": "number"
+        },
+        "integrityStatus": {
+          "type": "string",
+          "enum": ["aman", "peringatan", "pelanggaran"]
+        },
+        "events": {
+          "type": "array"
+        },
+        "snapshots": {
+          "type": "array"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "logId",
+        "userId",
+        "userName",
+        "userEmail",
+        "division",
+        "courseId",
+        "courseCode",
+        "stage",
+        "cameraActive",
+        "cameraLabel",
+        "cameraMirror",
+        "screenShareActive",
+        "fullscreenActive",
+        "tabSwitchCount",
+        "windowBlurCount",
+        "focusScorePct",
+        "awaySeconds",
+        "integrityStatus",
+        "events",
+        "snapshots",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profiles with PII isolated to owner and verified administrators."
+    },
+    "/users/{userId}/courseProgress/{courseId}": {
+      "schema": { "$ref": "#/entities/CourseProgressRecord" },
+      "description": "Per-module Pre-Test, watched seconds, checkpoint, Post-Test attempts, and notes."
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "#/entities/CourseConfigOverride" },
+      "description": "Admin-managed KKM, video watch thresholds, and custom LMS modules."
+    },
+    "/workspaceSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/WorkspacePolicy" },
+      "description": "Corporate email policy settings readable by signed-in users and editable by admins."
+    },
+    "/participantRegistrations/{inviteId}": {
+      "schema": { "$ref": "#/entities/ParticipantRegistration" },
+      "description": "Training participant emails registered by L&D admins before or during onboarding."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminMember" },
+      "description": "Trusted administrator membership list."
+    },
+    "/proctoringLogs/{logId}": {
+      "schema": { "$ref": "#/entities/ProctoringLog" },
+      "description": "Camera readiness and screen focus/tab-switch integrity logs owned by learner and readable by L&D admins."
+    }
+  }
+}

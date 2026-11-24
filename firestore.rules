@@ -1,0 +1,462 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default-deny everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HARDENED HELPERS ---
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'danikerja17@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidTrack(track) {
+      return track is string && track in ['OJT', 'Junior', 'Middle', 'Senior'];
+    }
+
+    // --- ENTITY VALIDATION BLUEPRINTS ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+        'uid', 'email', 'emailDomain', 'displayName', 'division', 'role',
+        'currentTrack', 'placementLevel', 'avgPreScore', 'avgVideoPct',
+        'bestPostScore', 'modulesPassed', 'modulesTotal', 'interventionSent',
+        'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'uid', 'email', 'emailDomain', 'displayName', 'division', 'role',
+        'currentTrack', 'placementLevel', 'avgPreScore', 'avgVideoPct',
+        'bestPostScore', 'modulesPassed', 'modulesTotal', 'interventionSent',
+        'createdAt', 'updatedAt'
+      ])
+      && data.uid is string && data.uid == userId && isValidId(data.uid)
+      && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+      && data.emailDomain is string && data.emailDomain.size() >= 3 && data.emailDomain.size() <= 100
+      && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+      && data.division is string && data.division.size() >= 1 && data.division.size() <= 100
+      && data.role is string && data.role in ['learner', 'admin']
+      && isValidTrack(data.currentTrack)
+      && data.placementLevel is string && data.placementLevel in ['unset', 'OJT', 'Junior', 'Middle', 'Senior']
+      && data.avgPreScore is number && data.avgPreScore >= 0 && data.avgPreScore <= 100
+      && data.avgVideoPct is number && data.avgVideoPct >= 0 && data.avgVideoPct <= 100
+      && data.bestPostScore is number && data.bestPostScore >= -1 && data.bestPostScore <= 100
+      && data.modulesPassed is number && data.modulesPassed >= 0 && data.modulesPassed <= 200
+      && data.modulesTotal is number && data.modulesTotal >= 1 && data.modulesTotal <= 200
+      && data.interventionSent is bool
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidCourseProgress(data, userId, courseId) {
+      return data.keys().hasAll([
+        'userId', 'courseId', 'preScore', 'bestPostScore', 'watchedPct',
+        'lastPositionSec', 'checkpointPassed', 'watchedSeconds',
+        'postTestAttempts', 'notes', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'userId', 'courseId', 'preScore', 'bestPostScore', 'watchedPct',
+        'lastPositionSec', 'checkpointPassed', 'watchedSeconds',
+        'postTestAttempts', 'notes', 'preTestResult', 'updatedAt'
+      ])
+      && data.userId is string && data.userId == userId && isValidId(data.userId)
+      && data.courseId is string && data.courseId == courseId && isValidId(data.courseId)
+      && data.preScore is number && data.preScore >= -1 && data.preScore <= 100
+      && data.bestPostScore is number && data.bestPostScore >= -1 && data.bestPostScore <= 100
+      && data.watchedPct is number && data.watchedPct >= 0 && data.watchedPct <= 100
+      && data.lastPositionSec is number && data.lastPositionSec >= 0 && data.lastPositionSec <= 36000
+      && data.checkpointPassed is bool
+      && data.watchedSeconds is list && data.watchedSeconds.size() <= 5000
+      && (data.watchedSeconds.size() == 0 || data.watchedSeconds[0] is number)
+      && data.postTestAttempts is list && data.postTestAttempts.size() <= 50
+      && (data.postTestAttempts.size() == 0 || data.postTestAttempts[0] is map)
+      && data.notes is list && data.notes.size() <= 100
+      && (data.notes.size() == 0 || data.notes[0] is map)
+      && (!('preTestResult' in data) || data.preTestResult == null || data.preTestResult is map)
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidCourseConfig(data, courseId) {
+      return data.keys().hasAll([
+        'courseId', 'visibility', 'code', 'title', 'category', 'trackLevel',
+        'instructorName', 'syllabusDurationLabel', 'passingScore',
+        'minWatchPercent', 'description', 'moduleOrderInTrack', 'isCustom',
+        'updatedAt', 'updatedBy'
+      ])
+      && data.keys().hasOnly([
+        'courseId', 'visibility', 'code', 'title', 'category', 'trackLevel',
+        'instructorName', 'syllabusDurationLabel', 'passingScore',
+        'minWatchPercent', 'description', 'moduleOrderInTrack', 'isCustom',
+        'videoUrl', 'videoDurationSec', 'updatedAt', 'updatedBy'
+      ])
+      && data.courseId is string && data.courseId == courseId && isValidId(data.courseId)
+      && data.visibility == 'active'
+      && data.code is string && data.code.size() >= 2 && data.code.size() <= 32
+      && data.title is string && data.title.size() >= 3 && data.title.size() <= 140
+      && data.category is string && data.category.size() >= 2 && data.category.size() <= 80
+      && isValidTrack(data.trackLevel)
+      && data.instructorName is string && data.instructorName.size() >= 2 && data.instructorName.size() <= 100
+      && data.syllabusDurationLabel is string && data.syllabusDurationLabel.size() >= 2 && data.syllabusDurationLabel.size() <= 40
+      && data.passingScore is number && data.passingScore >= 50 && data.passingScore <= 95
+      && data.minWatchPercent is number && data.minWatchPercent >= 50 && data.minWatchPercent <= 100
+      && data.description is string && data.description.size() <= 500
+      && data.moduleOrderInTrack is number && data.moduleOrderInTrack >= 1 && data.moduleOrderInTrack <= 100
+      && data.isCustom is bool
+      && (!('videoUrl' in data) || (data.videoUrl is string && data.videoUrl.size() <= 1500))
+      && (!('videoDurationSec' in data) || (data.videoDurationSec is number && data.videoDurationSec >= 10 && data.videoDurationSec <= 36000))
+      && data.updatedAt is timestamp
+      && data.updatedBy is string && data.updatedBy == request.auth.uid;
+    }
+
+    function isValidWorkspacePolicy(data) {
+      return data.keys().hasAll([
+        'companyName', 'enforceCorporateDomain', 'allowedDomains',
+        'requireRegisteredInvite', 'levelFlowMode', 'enforceModuleOrder',
+        'trackSequence', 'enableCameraMonitoring', 'requireCameraForTests',
+        'enableScreenTracking', 'enableTabSwitchSiren',
+        'requireFullscreenForPostTest', 'maxTabSwitchTolerance',
+        'updatedAt', 'updatedBy'
+      ])
+      && data.keys().hasOnly([
+        'companyName', 'enforceCorporateDomain', 'allowedDomains',
+        'requireRegisteredInvite', 'levelFlowMode', 'enforceModuleOrder',
+        'trackSequence', 'enableCameraMonitoring', 'requireCameraForTests',
+        'enableScreenTracking', 'enableTabSwitchSiren',
+        'requireFullscreenForPostTest', 'maxTabSwitchTolerance',
+        'updatedAt', 'updatedBy'
+      ])
+      && data.companyName is string && data.companyName.size() >= 2 && data.companyName.size() <= 100
+      && data.enforceCorporateDomain is bool
+      && data.allowedDomains is list && data.allowedDomains.size() <= 20
+      && (data.allowedDomains.size() == 0 || data.allowedDomains[0] is string)
+      && data.requireRegisteredInvite is bool
+      && data.levelFlowMode is string && data.levelFlowMode in ['admin_assigned', 'linear_sequential', 'open_catalog']
+      && data.enforceModuleOrder is bool
+      && data.trackSequence is list && data.trackSequence.size() >= 1 && data.trackSequence.size() <= 4
+      && isValidTrack(data.trackSequence[0])
+      && data.enableCameraMonitoring is bool
+      && data.requireCameraForTests is bool
+      && data.enableScreenTracking is bool
+      && data.enableTabSwitchSiren is bool
+      && data.requireFullscreenForPostTest is bool
+      && data.maxTabSwitchTolerance is number && data.maxTabSwitchTolerance >= 1 && data.maxTabSwitchTolerance <= 50
+      && data.updatedAt is timestamp
+      && data.updatedBy is string && data.updatedBy == request.auth.uid;
+    }
+
+    function isValidProctoringLog(data, logId) {
+      return data.keys().hasAll([
+        'logId', 'userId', 'userName', 'userEmail', 'division',
+        'courseId', 'courseCode', 'stage', 'cameraActive', 'cameraLabel',
+        'cameraMirror', 'screenShareActive', 'fullscreenActive',
+        'tabSwitchCount', 'windowBlurCount', 'focusScorePct',
+        'awaySeconds', 'integrityStatus', 'events', 'snapshots', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'logId', 'userId', 'userName', 'userEmail', 'division',
+        'courseId', 'courseCode', 'stage', 'cameraActive', 'cameraLabel',
+        'cameraMirror', 'screenShareActive', 'fullscreenActive',
+        'tabSwitchCount', 'windowBlurCount', 'focusScorePct',
+        'awaySeconds', 'integrityStatus', 'events', 'snapshots', 'updatedAt'
+      ])
+      && data.logId is string && data.logId == logId && isValidId(data.logId)
+      && data.userId is string && isValidId(data.userId)
+      && data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100
+      && data.userEmail is string && data.userEmail.size() >= 3 && data.userEmail.size() <= 160
+      && data.division is string && data.division.size() >= 1 && data.division.size() <= 100
+      && data.courseId is string && isValidId(data.courseId)
+      && data.courseCode is string && data.courseCode.size() >= 2 && data.courseCode.size() <= 32
+      && data.stage is string && data.stage in ['pretest', 'video', 'posttest']
+      && data.cameraActive is bool
+      && data.cameraLabel is string && data.cameraLabel.size() <= 120
+      && data.cameraMirror is bool
+      && data.screenShareActive is bool
+      && data.fullscreenActive is bool
+      && data.tabSwitchCount is number && data.tabSwitchCount >= 0 && data.tabSwitchCount <= 1000
+      && data.windowBlurCount is number && data.windowBlurCount >= 0 && data.windowBlurCount <= 1000
+      && data.focusScorePct is number && data.focusScorePct >= 0 && data.focusScorePct <= 100
+      && data.awaySeconds is number && data.awaySeconds >= 0 && data.awaySeconds <= 36000
+      && data.integrityStatus is string && data.integrityStatus in ['aman', 'peringatan', 'pelanggaran']
+      && data.events is list && data.events.size() <= 30
+      && (data.events.size() == 0 || data.events[0] is map)
+      && data.snapshots is list && data.snapshots.size() <= 10
+      && (data.snapshots.size() == 0 || data.snapshots[0] is map)
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidParticipantRegistration(data, inviteId) {
+      return data.keys().hasAll([
+        'inviteId', 'email', 'displayName', 'division', 'assignedTrack',
+        'status', 'registeredBy', 'activatedUid', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'inviteId', 'email', 'displayName', 'division', 'assignedTrack',
+        'status', 'registeredBy', 'activatedUid', 'createdAt', 'updatedAt'
+      ])
+      && data.inviteId is string && data.inviteId == inviteId && isValidId(data.inviteId)
+      && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+      && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+      && data.division is string && data.division.size() >= 1 && data.division.size() <= 100
+      && isValidTrack(data.assignedTrack)
+      && data.status is string && data.status in ['pending', 'active']
+      && data.registeredBy is string && data.registeredBy.size() >= 1 && data.registeredBy.size() <= 128
+      && data.activatedUid is string && data.activatedUid.size() <= 128
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminMember(data, adminUid) {
+      return data.keys().hasAll(['uid', 'email', 'grantedBy', 'createdAt'])
+      && data.keys().hasOnly(['uid', 'email', 'grantedBy', 'createdAt'])
+      && data.uid is string && data.uid == adminUid && isValidId(data.uid)
+      && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+      && data.grantedBy is string && data.grantedBy == request.auth.uid
+      && data.createdAt is timestamp;
+    }
+
+    // --- COLLECTION RULES ---
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isVerified() && (isAdmin() || resource.data.uid == request.auth.uid);
+
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().email == request.auth.token.email
+        && (incoming().role == 'learner' || (isAdmin() && incoming().role == 'admin'))
+        && incoming().interventionSent == false
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId)
+        && isVerified()
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            isOwner(userId)
+            && incoming().role == existing().role
+            && incoming().interventionSent == existing().interventionSent
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'division', 'placementLevel', 'currentTrack',
+              'avgPreScore', 'avgVideoPct', 'bestPostScore',
+              'modulesPassed', 'modulesTotal', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isValidId(userId) && isAdmin();
+
+      // Subcollection: Per-course learning progress (Master Gate enforces parent user doc exists)
+      match /courseProgress/{courseId} {
+        allow get: if isValidId(userId) && isValidId(courseId) && (isOwner(userId) || isAdmin());
+        allow list: if isVerified() && (isOwner(userId) || isAdmin()) && resource.data.userId == userId;
+
+        allow create: if isValidId(userId) && isValidId(courseId)
+          && isOwner(userId)
+          && isValidCourseProgress(incoming(), userId, courseId)
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId));
+
+        allow update: if isValidId(userId) && isValidId(courseId)
+          && isVerified()
+          && isValidCourseProgress(incoming(), userId, courseId)
+          && incoming().userId == existing().userId
+          && incoming().courseId == existing().courseId
+          && incoming().updatedAt == request.time
+          && (isOwner(userId) || isAdmin())
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'preScore', 'bestPostScore', 'watchedPct', 'lastPositionSec',
+            'checkpointPassed', 'watchedSeconds', 'postTestAttempts',
+            'notes', 'preTestResult', 'updatedAt'
+          ])
+          && exists(/databases/$(database)/documents/users/$(userId));
+
+        allow delete: if isValidId(userId) && isValidId(courseId) && isAdmin();
+      }
+    }
+
+    match /courses/{courseId} {
+      allow get: if isValidId(courseId) && isVerified();
+      allow list: if isVerified() && resource.data.visibility == 'active';
+
+      allow create: if isValidId(courseId)
+        && isAdmin()
+        && isValidCourseConfig(incoming(), courseId)
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(courseId)
+        && isAdmin()
+        && isValidCourseConfig(incoming(), courseId)
+        && incoming().courseId == existing().courseId
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'code', 'title', 'category', 'trackLevel', 'instructorName',
+          'syllabusDurationLabel', 'passingScore', 'minWatchPercent',
+          'description', 'moduleOrderInTrack', 'videoUrl', 'videoDurationSec',
+          'updatedAt', 'updatedBy'
+        ]);
+
+      allow delete: if isValidId(courseId) && isAdmin();
+    }
+
+    match /workspaceSettings/{settingId} {
+      allow get: if isValidId(settingId) && isVerified();
+      allow list: if false;
+
+      allow create: if isValidId(settingId)
+        && isAdmin()
+        && isValidWorkspacePolicy(incoming())
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(settingId)
+        && isAdmin()
+        && isValidWorkspacePolicy(incoming())
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'companyName', 'enforceCorporateDomain', 'allowedDomains',
+          'requireRegisteredInvite', 'levelFlowMode', 'enforceModuleOrder',
+          'trackSequence', 'enableCameraMonitoring', 'requireCameraForTests',
+          'enableScreenTracking', 'enableTabSwitchSiren',
+          'requireFullscreenForPostTest', 'maxTabSwitchTolerance',
+          'updatedAt', 'updatedBy'
+        ]);
+
+      allow delete: if false;
+    }
+
+    match /participantRegistrations/{inviteId} {
+      allow get: if isValidId(inviteId) && isVerified() && (
+        isAdmin() ||
+        resource.data.email == request.auth.token.email.lower()
+      );
+      allow list: if isVerified() && (
+        isAdmin() ||
+        resource.data.email == request.auth.token.email.lower()
+      );
+
+      allow create: if isValidId(inviteId)
+        && isAdmin()
+        && isValidParticipantRegistration(incoming(), inviteId)
+        && incoming().status == 'pending'
+        && incoming().activatedUid == ''
+        && incoming().registeredBy == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(inviteId)
+        && isVerified()
+        && isValidParticipantRegistration(incoming(), inviteId)
+        && incoming().inviteId == existing().inviteId
+        && incoming().email == existing().email
+        && incoming().registeredBy == existing().registeredBy
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'division', 'assignedTrack', 'status', 'updatedAt'
+            ])
+          ) ||
+          (
+            existing().email == request.auth.token.email.lower()
+            && existing().status == 'pending'
+            && incoming().status == 'active'
+            && incoming().activatedUid == request.auth.uid
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'activatedUid', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isValidId(inviteId) && isAdmin();
+    }
+
+    match /admins/{adminUid} {
+      allow get: if isValidId(adminUid) && (isOwner(adminUid) || isAdmin());
+      allow list: if isAdmin() && resource.data.uid is string;
+
+      allow create: if isValidId(adminUid)
+        && isAdmin()
+        && isValidAdminMember(incoming(), adminUid)
+        && incoming().createdAt == request.time;
+
+      allow update: if false;
+      allow delete: if isValidId(adminUid) && isAdmin();
+    }
+
+    match /proctoringLogs/{logId} {
+      allow get: if isValidId(logId) && isVerified() && (
+        isAdmin() ||
+        existing().userId == request.auth.uid
+      );
+      allow list: if isVerified() && (
+        isAdmin() ||
+        resource.data.userId == request.auth.uid
+      );
+
+      allow create: if isValidId(logId)
+        && isVerified()
+        && isValidProctoringLog(incoming(), logId)
+        && incoming().userId == request.auth.uid
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+
+      allow update: if isValidId(logId)
+        && isVerified()
+        && isValidProctoringLog(incoming(), logId)
+        && incoming().userId == existing().userId
+        && incoming().courseId == existing().courseId
+        && incoming().logId == existing().logId
+        && incoming().updatedAt == request.time
+        && (isAdmin() || existing().userId == request.auth.uid)
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'userName', 'division', 'courseCode', 'stage', 'cameraActive',
+          'cameraLabel', 'cameraMirror', 'screenShareActive',
+          'fullscreenActive', 'tabSwitchCount', 'windowBlurCount',
+          'focusScorePct', 'awaySeconds', 'integrityStatus', 'events',
+          'snapshots', 'updatedAt'
+        ]);
+
+      allow delete: if isValidId(logId) && isAdmin();
+    }
+
+    // Connection test probe path for boot connectivity check
+    match /test/connection {
+      allow get: if true;
+      allow list, write: if false;
+    }
+  }
+}

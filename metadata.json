@@ -1,0 +1,6 @@
+{
+  "name": "Lentera Akademi — Platform LMS Pre-Test, Video Learning & Post-Test",
+  "description": "Platform Learning Management System dengan alur belajar terstruktur: Pre-Test diagnostik, Video Learning interaktif terverifikasi, Post-Test evaluasi, dan analitik peningkatan kompetensi.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
